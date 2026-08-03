@@ -16,9 +16,6 @@ const allowedFloorPlans: Record<string, string[]> = {
   [aptNames.standard]: ["A8"],
 };
 
-// Target move-in cutoff date: September 29, 2026
-const TARGET_MOVE_IN_DATE = new Date("2026-09-29");
-
 // Fetches apartment unit data from the respective SightMap API endpoints
 const fetchData = async () => {
   const apiURLs = {
@@ -49,19 +46,6 @@ const fetchData = async () => {
   }
 
   return results;
-};
-
-// Helper function to parse availability string into a Date object
-const parseAvailableDate = (dateStr: string): Date | null => {
-  if (!dateStr) return null;
-
-  // Handle "Available Now" or similar immediate availability
-  if (dateStr.toLowerCase().includes("now")) {
-    return new Date();
-  }
-
-  const parsed = new Date(dateStr);
-  return isNaN(parsed.getTime()) ? null : parsed;
 };
 
 // Safely extracts the floor plan name as a string for filtering purposes
@@ -124,7 +108,7 @@ const sendEmail = async (data: any) => {
 
     const allowedPlans = allowedFloorPlans[aptName] || [];
 
-    // Filter available units based on floor plan codes, minimum area (>900 sqft), and move-in date (<= Sept 29, 2026)
+    // Filter available units based on floor plan codes
     const filteredUnits = units.filter((u: any) => {
       const fpName = getFloorPlanName(u, floorPlanMap);
 
@@ -135,18 +119,10 @@ const sendEmail = async (data: any) => {
           fpName.toLowerCase().includes(plan.toLowerCase()),
         );
 
-      const isBigEnough = u.area && u.area > 900;
-
-      // Date filtering logic
-      const rawDateStr = u.available_on || u.display_available_on || "";
-      const unitAvailDate = parseAvailableDate(rawDateStr);
-      const isAvailableBeforeTargetDate =
-        unitAvailDate !== null && unitAvailDate <= TARGET_MOVE_IN_DATE;
-
-      return matchesFloorPlan && isBigEnough && isAvailableBeforeTargetDate;
+      return matchesFloorPlan
     });
 
-    // Format filtered units into readable text blocks (excluding Floor Plan name from output)
+    // Format filtered units into readable text blocks
     const unitsTextList =
       filteredUnits.length > 0
         ? filteredUnits
