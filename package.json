@@ -1,0 +1,31 @@
+{
+  "name": "apt-price-tracker",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/canjtosun/apt-price-tracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/canjtosun/apt-price-tracker/issues"
+  },
+  "homepage": "https://github.com/canjtosun/apt-price-tracker#readme",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "nodemailer": "^9.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/nodemailer": "^8.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^7.0.2"
+  }
+}
