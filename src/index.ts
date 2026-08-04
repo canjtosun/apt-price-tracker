@@ -1,19 +1,64 @@
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
+import fs from "fs";
+import {
+  aptNames,
+  allowedFloorPlans,
+  getTodayDate,
+  stringToNumber,
+  writeToJSON,
+  readFromJSON,
+  getFloorPlanName,
+} from "./helper.js";
+import type { PriceHistory } from "./helper.js";
+
 dotenv.config();
 
-// Apartment complex display names
-const aptNames = {
-  gallery: "Gallery at Domain",
-  villages: "Villages at Domain",
-  standard: "Standard at Domain",
-};
+const filterCheck = (
+  filteredUnits: any[],
+  aptName: string,
+  historyObject: PriceHistory,
+) => {
+  const today = getTodayDate();
+  return filteredUnits.length > 0
+    ? filteredUnits
+        .map((u: any) => {
+          const unit_no = u.display_unit_number || u.unit_number;
+          const sqft = u.display_area || u.area;
+          const isAvailable = u.display_available_on || u.available_on;
+          const unitKey = `${aptName}_${unit_no}`;
+          const currentPriceStr = u.display_price || u.price;
+          const newPriceNum = stringToNumber(currentPriceStr);
 
-// Target floor plan codes to filter for each apartment complex
-const allowedFloorPlans: Record<string, string[]> = {
-  [aptNames.gallery]: ["A2"],
-  [aptNames.villages]: ["A7", "A8"],
-  [aptNames.standard]: ["A8"],
+          const unitHistory = historyObject[unitKey] || [];
+          const lastRecord = unitHistory[unitHistory.length - 1];
+
+          const oldPriceStr = lastRecord?.price;
+          const oldPriceNum = stringToNumber(oldPriceStr as string);
+
+          let priceStatus = "";
+
+          if (!oldPriceNum) {
+            priceStatus = " 🆕 (New)";
+          } else if (newPriceNum < oldPriceNum) {
+            const diff = oldPriceNum - newPriceNum;
+            priceStatus = ` 📉 (-$${diff} DOWN!)`;
+          } else if (newPriceNum > oldPriceNum) {
+            const diff = newPriceNum - oldPriceNum;
+            priceStatus = ` 📈 (+$${diff} UP!)`;
+          } else {
+            priceStatus = ` ⚪ (Unchanged)`;
+          }
+
+          if (!lastRecord || lastRecord.price !== currentPriceStr) {
+            unitHistory.push({ date: today, price: currentPriceStr });
+            historyObject[unitKey] = unitHistory;
+          }
+
+          return `Unit Number: ${unit_no}\nSqft: ${sqft}\nPrice: ${currentPriceStr}${priceStatus}\nStatus: ${isAvailable}`;
+        })
+        .join("\n\n")
+    : "No matching apartments available for the selected floor plans.";
 };
 
 // Fetches apartment unit data from the respective SightMap API endpoints
@@ -48,26 +93,6 @@ const fetchData = async () => {
   return results;
 };
 
-// Safely extracts the floor plan name as a string for filtering purposes
-const getFloorPlanName = (
-  u: any,
-  floorPlanMap: Record<string, string>,
-): string => {
-  const rawFp =
-    u.floor_plan_name ||
-    u.layout_name ||
-    floorPlanMap[u.floor_plan_id] ||
-    floorPlanMap[u.layout_id];
-
-  if (!rawFp) return "N/A";
-
-  if (typeof rawFp === "object") {
-    return rawFp.name || rawFp.filter_label || "N/A";
-  }
-
-  return String(rawFp);
-};
-
 // Constructs the email body and sends the digest notification via Nodemailer
 const sendEmail = async (data: any) => {
   // Configure the SMTP transporter using Gmail credentials from .env
@@ -80,6 +105,7 @@ const sendEmail = async (data: any) => {
   });
 
   const emailSections: string[] = [];
+  const historyObject = readFromJSON();
 
   // Process data for each apartment complex
   for (const [key, aptName] of Object.entries(aptNames)) {
@@ -119,27 +145,18 @@ const sendEmail = async (data: any) => {
           fpName.toLowerCase().includes(plan.toLowerCase()),
         );
 
-      return matchesFloorPlan
+      return matchesFloorPlan;
     });
 
     // Format filtered units into readable text blocks
-    const unitsTextList =
-      filteredUnits.length > 0
-        ? filteredUnits
-            .map((u: any) => {
-              return `Unit Number: ${
-                u.display_unit_number || u.unit_number
-              }\nSqft: ${u.display_area || u.area + " sq. ft."}\nPrice: ${
-                u.display_price || "$" + u.price
-              }\nAvailable: ${u.display_available_on || u.available_on}`;
-            })
-            .join("\n\n")
-        : "No matching apartments available for the selected floor plans.";
+    const unitsTextList = filterCheck(filteredUnits, aptName, historyObject);
 
     const targetPlanListStr = allowedPlans.join(", ");
     const sectionText = `=== ${aptName.toUpperCase()} ===\nTotal Available Units: ${totalUnits}\nTarget Floor Plans: [${targetPlanListStr}]\n\nFiltered Units:\n\n${unitsTextList}`;
     emailSections.push(sectionText);
   }
+
+  writeToJSON(historyObject);
 
   // Combine all property sections into a single email payload separated by dividers
   const emailBody = emailSections.join(
