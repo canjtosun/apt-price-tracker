@@ -28,3 +28,11 @@ jobs:
           USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
           TO_EMAIL: ${{ secrets.TO_EMAIL }}
         run: npx tsx src/index
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add prices.json
+          git commit -m "chore: update prices.json [skip ci]" || echo "No changes to commit"
+          git push
