@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/canjtosun/apt-price-tracker#readme",
   "dependencies": {
+    "chart.js": "^4.5.1",
     "dotenv": "^17.4.2",
     "nodemailer": "^9.0.3"
   },

@@ -85,6 +85,30 @@ const getFloorPlanName = (
   return String(rawFp);
 };
 
+const findLowestPricePerUnit = () => {
+  const unitLowestPrices: Record<string, string> = {};
+  const prices = readFromJSON();
+  for (const [unitKey, history] of Object.entries(prices)) {
+    const numericPrices = history.map((price) => stringToNumber(price.price));
+    const lowestPrice = Math.min(...numericPrices);
+    unitLowestPrices[unitKey] =
+      `$${lowestPrice.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  }
+  return unitLowestPrices;
+};
+
+const findHighestPricePerUnit = () => {
+  const unitHighestPrices: Record<string, string> = {};
+  const prices = readFromJSON();
+  for (const [unitKey, history] of Object.entries(prices)) {
+    const numericPrices = history.map((price) => stringToNumber(price.price));
+    const lowestPrice = Math.max(...numericPrices);
+    unitHighestPrices[unitKey] =
+      `$${lowestPrice.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  }
+  return unitHighestPrices;
+};
+
 export {
   aptNames,
   allowedFloorPlans,
@@ -92,6 +116,8 @@ export {
   stringToNumber,
   writeToJSON,
   readFromJSON,
-  getFloorPlanName
+  getFloorPlanName,
+  findLowestPricePerUnit,
+  findHighestPricePerUnit,
 };
-export type { PriceHistory };
+export type { PriceHistory, PriceRecord };
